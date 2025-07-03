@@ -2,4 +2,4 @@
 title: "About"
 ---
 
-This was created for Kane's Data Science Boot Camp
+This was created for Kane's Data Science Boot Camp. I used many AI tools.

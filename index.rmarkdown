@@ -101,3 +101,4 @@ leaflet(data = education_summary) %>%
     position = "bottomright"
   )
 ```
+
