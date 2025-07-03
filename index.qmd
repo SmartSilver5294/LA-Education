@@ -15,47 +15,29 @@ library(primer.data)
 library(viridis)
 ```
 ```{r}
-# Load the library
 
-
-# Set your Census API key (replace with your actual key)
-# census_api_key("0bd017d922ce24ad43cc1da99146d932ff428344", install = TRUE, overwrite = TRUE)
-
-# Download population data for census tracts in Los Angeles County
-la_tracts <- get_acs(
-  geography = "tract",
-  variables = "B01003_001",  # Total population
-  state = "CA",
-  county = "Los Angeles",
-  year = 2020,
-  geometry = TRUE
-)
-```
-
-```{r}
-# Plot choropleth map
-ggplot(la_tracts) +
-  geom_sf(aes(fill = estimate), color = NA) +
+ggplot(education_summary) +
+  geom_sf(aes(fill = bachelors_pct), color = NA) +
   scale_fill_viridis(
-    name = "Population",
-    option = "C",
-    direction = -1,
-    trans = "log"
+    name = "% with Bachelor's",
+    option = "D",
+    direction = -1
   ) +
   labs(
-    title = "Population by Census Tract in Los Angeles County",
-    subtitle = "Based on ACS 2020 5-year estimates",
-    caption = "Data source: U.S. Census Bureau via tidycensus"
+    title = "Bachelor's Degree Attainment in Los Angeles Census Tracts",
+    subtitle = "Percentage of population 25+ with a Bachelor's (ACS 2020)",
+    caption = "Source: U.S. Census via tidycensus"
   ) +
-  theme_minimal(base_family = "Helvetica") +
+  theme_minimal() +
   theme(
-    plot.title = element_text(face = "bold", size = 18),
-    plot.subtitle = element_text(size = 12),
-    legend.position = "right",
+    plot.title = element_text(face = "bold"),
     panel.grid = element_blank()
   )
+```
 
 
+
+```{r}
 # Load libraries
 library(leaflet)
 library(sf)
@@ -96,5 +78,42 @@ leaflet(data = la_tracts) %>%
     title = "Population",
     position = "bottomright"
   )
+```
 
+```{r}
+# Define a color palette (you can play with options like "YlGnBu", "PuRd", etc.)
+pal <- colorNumeric(
+  palette = "YlOrRd",
+  domain = la_tracts$estimate
+)
+
+# Create interactive map
+leaflet(data = la_tracts) %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(
+    fillColor = ~pal(estimate),
+    weight = 0.5,
+    opacity = 1,
+    color = "#ffffff",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 2,
+      color = "#666",
+      fillOpacity = 0.9,
+      bringToFront = TRUE
+    ),
+    label = ~paste0("Tract: ", GEOID, "<br>Population: ", estimate),
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "13px",
+      direction = "auto"
+    )
+  ) %>%
+  addLegend(
+    pal = pal,
+    values = ~estimate,
+    opacity = 0.7,
+    title = "Population",
+    position = "bottomright"
+  )
 ```
