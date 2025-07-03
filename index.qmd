@@ -1,47 +1,49 @@
 ---
-title: "LA Education"
-author: "Ayush Chandra"
-execute:
-    echo: FALSE
-    message: FALSE
-    warning: FALSE
+title: "Los Angeles Education"
+execute: 
+  echo: FALSE
+  message: FALSE
+  warning: FALSE
+  results: "hide"
 ---
 
 ```{r}
+#| message: false
 library(tidycensus)
 library(tidyverse)
-library(tidyr)
-library(primer.data)
 library(viridis)
 library(sf)
-library(dplyr)
+library(leaflet)
+library(scales)  # for percent formatting
+library(RColorBrewer)
 ```
 
 ```{r}
-# Fetch education variables for LA County
-education_data <- get_acs(
+# Load required libraries
+census_api_key("0bd017d922ce24ad43cc1da99146d932ff428344", install = TRUE, overwrite = TRUE)
+
+
+education_raw <- get_acs(
   geography = "tract",
   variables = c(bachelors = "B15003_022", total = "B15003_001"),
   state = "CA",
   county = "Los Angeles",
   year = 2020,
-  geometry = TRUE
+  geometry = TRUE,
+  quiet = TRUE
 )
 
-# Check for NA values and clean if needed
-education_clean <- education_data %>%
-  filter(!is.na(estimate))
-
-# Reshape and calculate % with bachelor's degree
-education_summary <- education_clean %>%
+# Process and enrich
+education_clean <- education_raw %>%
+  filter(!is.na(estimate)) %>%
   select(GEOID, NAME, variable, estimate, geometry) %>%
   pivot_wider(names_from = variable, values_from = estimate) %>%
-  mutate(bachelors_pct = 100 * bachelors / total)
+  mutate(bachelors_pct = round(100 * bachelors / total, 1)) %>%
+  mutate(city = str_extract(NAME, "(?<=,\\s).*?(?= County)"))
 ```
 
 ```{r}
-
-ggplot(education_summary) +
+ggplot(education_clean) +
   geom_sf(aes(fill = bachelors_pct), color = NA) +
   scale_fill_viridis(
     name = "% with Bachelor's",
@@ -49,9 +51,9 @@ ggplot(education_summary) +
     direction = -1
   ) +
   labs(
-    title = "Bachelor's Degree Attainment in Los Angeles Census Tracts",
-    subtitle = "Percentage of population 25+ with a Bachelor's (ACS 2020)",
-    caption = "Source: U.S. Census via tidycensus"
+    title = "Bachelor's Degree Attainment in LA Census Tracts",
+    subtitle = "ACS 2020 (Age 25+)",
+    caption = "Source: U.S. Census Bureau via tidycensus"
   ) +
   theme_minimal() +
   theme(
@@ -59,35 +61,29 @@ ggplot(education_summary) +
     panel.grid = element_blank()
   )
 ```
-
-
-
 ```{r}
-#| cache = TRUE
-# Load libraries
-library(leaflet)
-library(sf)
-library(RColorBrewer)
+#| warning: false
+
 pal <- colorNumeric(
   palette = "Blues",
-  domain = education_summary$bachelors_pct
+  domain = education_clean$bachelors_pct
 )
 
-leaflet(data = education_summary) %>%
+leaflet(data = education_clean) %>%
   addProviderTiles("CartoDB.Positron") %>%
   addPolygons(
     fillColor = ~pal(bachelors_pct),
     color = "#ffffff",
-    weight = 0.5,
+    weight = 0.4,
     fillOpacity = 0.7,
     highlightOptions = highlightOptions(
-      weight = 2,
-      color = "#333333",
+      weight = 1.5,
+      color = "#000000",
       bringToFront = TRUE
     ),
     label = ~paste0(
-      "Tract: ", GEOID, "<br>",
-      "Bachelor's Degree: ", round(bachelors_pct, 1), "%"
+      "City/Town: ", city, "<br>",
+      "Bachelor's Degree: ", bachelors_pct
     ),
     labelOptions = labelOptions(
       style = list("font-weight" = "normal"),
@@ -97,7 +93,8 @@ leaflet(data = education_summary) %>%
   addLegend(
     pal = pal,
     values = ~bachelors_pct,
-    title = "% with Bachelor's Degree",
+    title = "% Bachelor's Degree",
     position = "bottomright"
   )
 ```
+
